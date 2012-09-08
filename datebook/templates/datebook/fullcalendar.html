@@ -1,22 +1,21 @@
 <script type="text/javascript">
-{% if page_data %}
 var page_data = {{ page_data|safe }}
-{% endif %}
 
 $(document).ready(function() {
-	$('#session-calendar').fullCalendar({
-		header: {
-			left: 'prev,next today',
-			center: 'title',
-			right: 'month,agendaWeek,agendaDay'
-		},
-		events: page_data.events_url,		// need to add something here
-		theme: true,
-		editable: true,
-		selectable: true,
-		selectHelper: true,
-		allDaySlot: true,
-		slotMinutes: 30,
+	$('#session-calendar').fullCalendar( $.extend({}, {{ fullcalendar_options|safe }} , {
+	// 	header: {
+	// 		left: 'prev,next today',
+	// 		center: 'title',
+	// 		right: 'month,agendaWeek,agendaDay'
+	// 	},
+	// 	events: page_data.events_url,		// need to add something here
+	// 	theme: true,
+	// 	editable: true,
+	// 	selectable: true,
+	// 	selectHelper: true,
+	// 	allDaySlot: true,
+	// 	slotMinutes: 30,
+	// }, {
 //------------------------------------------------------------------------------
 		select: function(start, end, allDay) {
 			$.event.trigger('eventAdd', [start, end, allDay])
@@ -30,7 +29,7 @@ $(document).ready(function() {
 			$.event.trigger('eventEdit', [event, false, revertFunc])
 		}
 //------------------------------------------------------------------------------
-	}).bind('eventsUpdated', function(event, data) {
+	})).bind('eventsUpdated', function(event, data) {
 		$('#session-calendar').fullCalendar('refetchEvents');
 	});
 

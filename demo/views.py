@@ -20,17 +20,8 @@ def datebook_view(request, datebook_id):
 	"""
 	
 	"""
-	form = EventModelForm()
-	page_data = {
-		'create_url': reverse("event_ajax_CRUD", kwargs={'action': 'create',}),
-		'update_url': reverse("event_ajax_CRUD", kwargs={'action': 'update',}),
-		'delete_url': reverse("event_ajax_CRUD", kwargs={'action': 'delete',}),
-		'datebook_id': datebook_id,
-	}
-
 	template = 'datebook/datebook_view.html'
 	data = {
-		'page_data': simplejson.dumps(page_data),
-		'event_form': form,
+		'datebook_id': datebook_id,
 	}
 	return render_to_response( template, data, context_instance = RequestContext(request))

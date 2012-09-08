@@ -11,20 +11,12 @@ register = template.Library()
 
 @register.inclusion_tag('datebook/fullcalendar.html')
 def fullcalendar_datebook(datebook_id):
+	return configure_fullcalendar(datebook_id, False)
 
-	event_form = forms.EventModelForm()
-	page_data = {
-		'create_url': reverse("event_create"),
-		'update_url': reverse("event_update"),
-		'delete_url': reverse("event_delete"),
-		'events_url': reverse("datebook_events", kwargs={'datebook_id': datebook_id, }),
-		'datebook_id': datebook_id,
-	}
+@register.inclusion_tag('datebook/fullcalendar.html')
+def fullcalendar_datebook_editable(datebook_id):
+	return configure_fullcalendar(datebook_id, True)
 
-	return { 
-		'page_data': simplejson.dumps(page_data), 
-		'event_form': event_form,
-	}
 
 @register.inclusion_tag('datebook/fullcalendar_js.html')
 def fullcalendar_js():
@@ -33,3 +25,35 @@ def fullcalendar_js():
 @register.inclusion_tag('datebook/fullcalendar_css.html')
 def fullcalendar_css():
 	return { 'STATIC_URL': STATIC_URL, }
+
+
+def configure_fullcalendar(datebook_id, editable):
+	event_form = forms.EventModelForm()
+	page_data = {
+		'create_url': reverse("event_create"),
+		'update_url': reverse("event_update"),
+		'delete_url': reverse("event_delete"),
+		'datebook_id': datebook_id,
+	}
+
+	fullcalendar_options = {
+		'header': {
+			'left': 'prev,next today',
+			'center': 'title',
+			'right': 'month,agendaWeek,agendaDay'
+		},
+		'events': reverse("datebook_events", kwargs={'datebook_id': datebook_id, }),
+		'theme': True,
+		'editable': editable,
+		'selectable': editable,
+		'selectHelper': editable,
+		'allDaySlot': True,
+		'slotMinutes': 30,
+	}
+
+	return { 
+		'page_data': simplejson.dumps(page_data), 
+		'fullcalendar_options': simplejson.dumps(fullcalendar_options),
+		'event_form': event_form,
+	}
+
