@@ -1,0 +1,33 @@
+{% load i18n %}
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+    <link rel="stylesheet" href="/style.css" />
+    {% block extracss %}{% endblock %}
+    {% block extrajs %}{% endblock %}
+
+    {% if page_data %}
+    <script type="text/javascript">
+        var page_data = {{ page_data|safe }}
+    </script>
+    {% endif %}
+    <title>{% block title %}User test{% endblock %}</title>
+</head>
+
+<body>
+    {% if message %}<div id="message">{{ message }}</div>{% endif %}
+
+    <div id="content">
+        {% block content %}{% endblock %}
+    </div>
+
+    <div id="footer">
+        {% block footer %}
+        <hr />
+        {% endblock %}
+    </div>
+</body>
+
+</html>

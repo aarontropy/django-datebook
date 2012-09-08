@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% load tz %}
+{% get_current_timezone as TIME_ZONE %}
+
+{% block extracss %}
+<link rel="stylesheet" href="{{ STATIC_URL }}fullcalendar/fullcalendar.css" />
+<link rel="stylesheet" href="{{ STATIC_URL }}fullcalendar/fullcalendar.print.css" media='print' />
+<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}jquery/smoothness/jquery-ui-1.8.23.custom.css" />
+<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}jquery/jquery.ui.timepicker.css" />
+<style type="text/css">
+#session-calendar {
+	width: 900px;
+	margin: 0 auto;
+}
+</style>
+{% endblock %}
+
+{% block extrajs %}
+{% endblock %}
+
+{% block content %}
+<ul>
+{% if datebooks %}
+{% for datebook in datebooks %}
+	<li><a href="{% url datebook_view datebook.id %}">{{ datebook }}</a></li>
+{% endfor %}
+{% else %}
+	<li>No datebooks. Sorry</li>
+{% endif %}
+</ul>
+{% endblock %}

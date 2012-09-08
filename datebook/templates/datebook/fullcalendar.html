@@ -1,0 +1,179 @@
+<script type="text/javascript">
+{% if page_data %}
+var page_data = {{ page_data|safe }}
+{% endif %}
+
+$(document).ready(function() {
+	$('#session-calendar').fullCalendar({
+		header: {
+			left: 'prev,next today',
+			center: 'title',
+			right: 'month,agendaWeek,agendaDay'
+		},
+		events: page_data.events_url,		// need to add something here
+		theme: true,
+		editable: true,
+		selectable: true,
+		selectHelper: true,
+		allDaySlot: true,
+		slotMinutes: 30,
+//------------------------------------------------------------------------------
+		select: function(start, end, allDay) {
+			$.event.trigger('eventAdd', [start, end, allDay])
+			$('#session-calendar').fullCalendar('unselect');
+		},
+
+		eventClick: function(calEvent, jsEvent, view) {
+			$.event.trigger('eventEdit', [calEvent, true]);
+		},
+		eventDrop: function(event, dayDelta, minuteDelta, allDay, revertFunc) {
+			$.event.trigger('eventEdit', [event, false, revertFunc])
+		}
+//------------------------------------------------------------------------------
+	}).bind('eventsUpdated', function(event, data) {
+		$('#session-calendar').fullCalendar('refetchEvents');
+	});
+
+
+	function setOccurrenceForm(options) {
+		var default_options = {
+			'start': 			Date.now(),
+			'end': 				Date.now(),
+			'allDay': 			false,
+			'occurrence_id': 	'',
+			'action': 			'create'
+		}
+		for (var key in default_options) {
+			if (typeof options[key] == 'undefined') options[key] = default_options[key];
+		}
+		// disable the delete button if we are adding an occurrence
+		if (options['occurrence_id'] == '') {
+			$( '#occurrence-single' ).find(":button:contains('Delete')").attr("disabled", true);
+		} else {
+			$( '#occurrence-single' ).find(":button:contains('Delete')").attr("disabled", false);
+		}
+
+		$( '#id_start_0' ).datepicker("setDate", options['start']);
+		$( '#id_start_1' ).timepicker("setTime", options['start'].toTimeString());
+		$( '#id_end_0' ).datepicker("setDate", options['end']);
+		$( '#id_end_1' ).timepicker("setTime", options['end'].toTimeString());
+		$( '#id_event_title' ).val(options['event_title']);
+		$( '#id_event' ).val(options['event_id']);
+		$( '#id_datebook' ).val(options['datebook_id']);
+		$( '#id_action').val(options['action']);
+	}
+
+	function postOccurrenceForm(triggerEvent) {
+		var data = $('#occurrence-single').children("form").serializeObject();
+		// var url = '/ajax/'+$( '#id_action').val()+'/'
+		action = $('#id_action').val();
+		switch (action) {
+		case "create":
+			url = page_data.create_url;
+			break;
+		case "update":
+			url = page_data.update_url;
+			break;
+		case "delete":
+			url = page_data.delete_url;
+			break;
+		}
+
+		data = {};
+		$('#occurrence-single').find("input").each(function(idx, el) {
+			var n = el.name, v = el.value;
+			data[n] = data[n] === undefined ? v 
+				: $.isArray( data[n] ) ? data[n].concat(v)
+				: [obj[n], v ];
+		});
+
+		//save the data to the server
+		$.post(url, data, function(answer) {
+			if (answer.error) {
+			 	alert(answer.error + "\n-----\n" + answer.message);
+			 	return false;
+			} else {
+				$.event.trigger(triggerEvent, [answer]);
+				return true;
+			}
+		});
+	}
+
+	function openDialog() {
+		// The whole disable-enable thing is to prevent the datepickers and 
+		// timepickers from automatically opening when the dialog is shown
+		$('.datepicker').datepicker('disable');
+		$('.timepicker').timepicker('disable');
+		$( '#occurrence-single' ).dialog('open').show();
+		$('.datepicker').datepicker('enable');
+		$('.timepicker').timepicker('enable');
+
+	}
+
+
+
+	//-------------------------------------------------------------------------
+	// FORMS
+	$('#occurrence-detail').dialog({
+		autoOpen: false,
+		width: 450
+	});
+
+	$('#occurrence-single').dialog({
+		autoOpen: false,
+		width: 650,
+		buttons: {
+			Save: function() {
+				postOccurrenceForm('eventsUpdated');
+				$( this ).dialog( "close" );
+			},
+			Delete: function() {
+				$( '#id_action').val('delete');
+				postOccurrenceForm('eventsUpdated');
+				$( this ).dialog( "close" );
+			},
+			Cancel: function() {
+				$( this ).dialog( "close" );
+			},
+		}
+
+	}).on('eventAdd', function(event, start, end, allDay) {
+		setOccurrenceForm({
+			'start': 	start,
+			'end': 		end,
+			'allDay': 	allDay, 
+			'datebook_id': page_data.datebook_id,
+		});
+		openDialog();
+	}).on('eventEdit', function(event, calEvent, showdialog, revertFunc) {
+		calEvent['action'] = 'update';
+		setOccurrenceForm(calEvent);
+		if (showdialog) {
+			openDialog();
+		} else {
+			if (postOccurrenceForm('event_update/', '')) {
+				revertFunc();
+			}
+		}
+	});
+
+
+});
+</script>
+
+<div id="session-calendar"></div>
+
+<div id="occurrence-detail" title="Event details">
+	<table>
+		<tr><td>Course</td> 	<td><span id="occurrence-detail-course"></span></td>	</tr>
+		<tr><td>Session</td> 	<td><span id="occurrence-detail-session"></span></td>	</tr>
+		<tr><td>Start</td> 		<td><span id="occurrence-detail-start"></span></td>	</tr>
+		<tr><td>End</td>	 	<td><span id="occurrence-detail-end"></span></td>	</tr>
+	</table>
+</div>
+
+
+<div id="occurrence-single" title="Single Event">
+	<form id="occurrence-single-form" action="." method="post">{% csrf_token %}
+		<table>{{ event_form.as_table }}</table></form>
+</div>
