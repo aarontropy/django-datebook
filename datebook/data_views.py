@@ -3,9 +3,10 @@ from django.http import HttpResponse
 from django.utils import simplejson
 
 from datetime import datetime, timedelta
+import dateutil.parser
 
 from datebook.models import Event, Datebook
-from datebook.forms import EventModelForm
+from datebook.forms import EventModelForm, SeriesModelForm
 
 
 
@@ -41,36 +42,61 @@ def datebook_events(request, datebook_id):
 	jsondata = simplejson.dumps(data)
 	return HttpResponse(jsondata, mimetype="application/json")
 
+def event_form_html(request):
+	data = {}
+	# start and end dates are passed as ISO-formatted strings in UTC.
+	# The offset in minutes is also passed. 
+	init = {
+		'start': dateutil.parser.parse(request.POST['start']) - timedelta(minutes=int(request.POST['offset'])),
+		'end': dateutil.parser.parse(request.POST['end']) - timedelta(minutes=int(request.POST['offset'])),
+	}
+
+	event_id = request.POST['event_id'] if request.POST.has_key('event_id') else request.GET['event_id'] if request.GET.has_key('event_id') else None
+	if event_id:
+		try:
+			event = Event.objects.get(id=event_id)
+			form = EventModelForm(instance=event, initial=init)
+			if form.is_valid():
+				data = { 'as_table': form.as_table() }
+			else:
+				data = { 'error': 'Validity Errors: \n%s' % (str(form.errors),) }				
+		except:
+			data = { 'error': 'Could not get event id=%s' % (event_id,) }
+	else:
+		form = EventModelForm(initial=init)
+		data = { 'as_table': form.as_table(),
+			'start': request.POST['start'], }
+	return HttpResponse(simplejson.dumps(data), mimetype="application/json")
+
+def series_form_html(request):
+	data = {}
+	series_id = request.POST['series_id'] if request.POST.has_key('series_id') else request.GET['series_id'] if request.GET.has_key('series_id') else None
+	if series_id:
+		try:
+			series = Series.objects.get(id=request.POST['series_id'])
+			form = SeriesModelForm(instance=series, initial=request.POST)
+			data = { 'as_table': form.as_table() }
+		except:
+			data = { 'error': 'Could not get series id=%s' % (series_id,) }
+	else:
+		form = SeriesModelForm(initial=request.POST)
+		data = { 'as_table': form.as_table() }
+	return HttpResponse(simplejson.dumps(data), mimetype="application/json")
+
+
+
+
+
+
+
+#-------------------------------------------------------------------------------
+# EVENT VIEWS
+#-------------------------------------------------------------------------------
 def event_create(request):
 	data = {}
 	if request.is_ajax() and request.method=='POST':
 		form = EventModelForm(request.POST)
-		if form.is_valid():
-			# try:
-			# 	datebook_id = form.cleaned_data['datebook_id']
-			# 	datebook = Datebook.objects.get(id=datebook_id)
-			# except Datebook.DoesNotExist:
-			# 	data = { 
-			# 		'status': 'error',
-			# 		'error': 'DoesNotExist Error', 
-			# 		'message': 'Invalid Datebook id: [%s]' % (form.cleaned_data['datebook'],)
-			# 	}
-			# except KeyError:
-			# 	data = { 
-			# 		'status': 'error',
-			# 		'error': 'No Datebook ID Error', 
-			# 		'message': 'A Datebook ID must be passed to create an event'
-			# 	}
-			# else:
-				# form.cleaned_data['datebook'] = datebook
-				form.save()
-				data = { 'status': 'success', }
-		else:
-			data = { 
-				'status': 'error',
-				'error': 'Validation Error', 
-				'message': '\n'.join(["%s: %s" % (key, form.errors[key]) for key in form.errors]) 
-			}
+		data = save_form(form)
 	else:
 		data = {
 			'status': 'error',
@@ -85,15 +111,7 @@ def event_update(request):
 	if request.is_ajax() and request.method=='POST':
 		event = Event.objects.get(id=request.POST['event'])
 		form = EventModelForm(instance=event, data=request.POST)
-		if form.is_valid():
-			form.save()
-			data = { 'status': 'success', }
-		else:
-			data = { 
-				'status': 'error',
-				'error': 'Validation Error', 
-				'message': '\n'.join(["%s: %s" % (key, form.errors[key]) for key in form.errors]) 
-			}
+		data = save_form(form)
 	return HttpResponse(simplejson.dumps(data), mimetype="application/json")
 
 def event_delete(request):
@@ -103,64 +121,45 @@ def event_delete(request):
 		event.delete()
 	return HttpResponse(simplejson.dumps(data), mimetype="application/json")
 
-def event_ajax_CRUD(request, action=''):
-	act = action.lower()
-	data = {
-		'status': 'error',
-		'error': 'No Valid Action',
-		'message': "Action must be either 'create', 'update' or 'delete'",
-	}
-	if act == 'create':
-		return event_create(request)
-	elif act == 'update':
-		return event_update(request)
-	elif act == 'delete':
-		return event_delete(request)
+#-------------------------------------------------------------------------------
+# SERIES VIEWS
+#-------------------------------------------------------------------------------
+def series_create(request):
+	if request.is_ajax() and request.method=='POST':
+		form = SeriesModelForm(request.POST)
+		data = save_form(form)
 	else:
-		return HttpResponse(simplejson.dumps(data), mimetype="application/json")
+		data = {
+			'status': 'error',
+			'error': 'Post Error',
+			'message': 'Ajax %s, Post %s' % (request.is_ajax(), request.method,)
+		}
+	return HttpResponse(simplejson.dumps(data), mimetype="application/json")
 
-def ajax_event_update(request, datebook_id=None):
-	"""
-	If a datebook_id is supplied, this will be the default datebook for added
-	events.  Otherwise, a valid event object needs to be passed.
-	"""
+def series_update(request):
+	if request.is_ajax() and request.method=='POST':
+		series = Series.objects.get(id=request.POST['series'])
+		form = SeriesModelForm(instance=series, data=request.POST)
+		data = save_form(form)
+	else:
+		data = {
+			'status': 'error',
+			'error': 'Post Error',
+			'message': 'Ajax %s, Post %s' % (request.is_ajax(), request.method,)
+		}
+	return HttpResponse(simplejson.dumps(data), mimetype="application/json")
 
-	data = {}
 
-	if request.method == 'POST':
-		try:
-			if request.POST.has_key('id'):			# we are editing an existing Event
-				try:
-					event = Event.objects.get(id=request.POST['id'])
-				except:
-					event = None
-				form = EventModelForm(instance=event, data=request.POST)
-			else:
-				form = EventModelForm(request.POST)
 
-			if form.is_valid():
-				# try to get the occurrence from the occurrence id, or create a new one with the current session id
-				if form.cleaned_data['action'] == 'delete':
-					try:
-						event.delete()
-					except Exception, e:
-						data['error'] = 'Delete Error'
-						data['errorMessage'] = str(e)
-				else:
-					
-					try:
-						form.save()
-					except Exception, e:
-						data['error'] = 'Save Error'
-						data['errorMessage'] = str(e)
-					else:
-						data['status'] = 'success'
-						data['message'] = ''
-			else:
-				data['error'] 	= 'Validation Error'
-				data['errorMessage'] = '\n'.join(["%s: %s" % (key, form.errors[key]) for key in form.errors])
-		except Exception, e:
-			data['error'] = 'Other Error'
-			data['errorMessage'] = str(e)
-	jsondata = simplejson.dumps(data)
-	return HttpResponse(jsondata, mimetype="application/json")
+#-------------------------------------------------------------------------------
+def save_form(form):
+	if form.is_valid():
+		form.save()
+		data = { 'status': 'success', }
+	else:
+		data = { 
+			'status': 'error',
+			'error': 'Validation Error', 
+			'message': '\n'.join(["%s: %s" % (key, form.errors[key]) for key in form.errors]) 
+		}
+	return data
