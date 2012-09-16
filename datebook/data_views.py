@@ -8,6 +8,9 @@ import dateutil.parser
 from datebook.models import Event, Datebook
 from datebook.forms import EventModelForm, SeriesModelForm
 
+import logging
+log = logging.getLogger('app')
+
 
 
 def datebook_events(request, datebook_id):

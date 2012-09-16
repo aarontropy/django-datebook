@@ -68,13 +68,14 @@ $(document).ready(function() {
 		}
 
 		data = {};
-		$('#occurrence-single').find("input").each(function(idx, el) {
+		$('#event-form').find("input").each(function(idx, el) {
 			var n = el.name, v = el.value;
 			data[n] = data[n] === undefined ? v 
 				: $.isArray( data[n] ) ? data[n].concat(v)
 				: [obj[n], v ];
 		});
 		data['csrfmiddlewaretoken'] = page_data.csrf_token;
+		data['datebook'] = page_data.datebook_id;
 
 		//save the data to the server
 		$.post(url, data, function(answer) {
