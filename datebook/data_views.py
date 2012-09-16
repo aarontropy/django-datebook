@@ -45,20 +45,41 @@ def datebook_events(request, datebook_id):
 	jsondata = simplejson.dumps(data)
 	return HttpResponse(jsondata, mimetype="application/json")
 
+def event_data(request):
+	data = {}
+	event_id = request.POST['event_id'] if request.POST.has_key('event_id') else request.GET['event_id'] if request.GET.has_key('event_id') else None
+	if event_id:
+		try:
+			event = Event.objects.get(id=event_id)
+			form = EventModelForm(instance=event)
+
+			if form.is_valid():		
+				data['model'] = {}
+				for field in event._meta.fields:
+					data['model'][field.name] = getattr(event, field.name)
+
+				data['form'] = {}
+				for field in form:
+					data['form'][field.name] = getattr(event, field.name)
+			else:
+				data = { 'error': 'Validation error', 'message': '\n'.join(["%s: %s" % (key, form.errors[key]) for key in form.errors])  }
+		except DoesNotExist:
+			data = { 'error': 'DoesNotExist', 'message': 'Event id=%s does not exist.' % (event_id,) }
+
+	return HttpResponse(simplejson.dumps(data), mimetype="application/json")
+
+
 def event_form_html(request):
 	data = {}
 	# start and end dates are passed as ISO-formatted strings in UTC.
 	# The offset in minutes is also passed. 
-	init = {
-		'start': dateutil.parser.parse(request.POST['start']) - timedelta(minutes=int(request.POST['offset'])),
-		'end': dateutil.parser.parse(request.POST['end']) - timedelta(minutes=int(request.POST['offset'])),
-	}
+	
 
 	event_id = request.POST['event_id'] if request.POST.has_key('event_id') else request.GET['event_id'] if request.GET.has_key('event_id') else None
 	if event_id:
 		try:
 			event = Event.objects.get(id=event_id)
-			form = EventModelForm(instance=event, initial=init)
+			form = EventModelForm(instance=event)
 			if form.is_valid():
 				data = { 'as_table': form.as_table() }
 			else:
@@ -66,9 +87,14 @@ def event_form_html(request):
 		except:
 			data = { 'error': 'Could not get event id=%s' % (event_id,) }
 	else:
+		start 	= dateutil.parser.parse(request.POST['start']) - timedelta(minutes=int(request.POST['offset'])) if request.POST.has_key('start') else datetime.now()
+		end 	= dateutil.parser.parse(request.POST['end']) - timedelta(minutes=int(request.POST['offset'])) if request.POST.has_key('end') else start + timedelta(minutes=1)
+		init = {
+			'start': start,
+			'end': end,
+		}
 		form = EventModelForm(initial=init)
-		data = { 'as_table': form.as_table(),
-			'start': request.POST['start'], }
+		data = { 'as_table': form.as_table() }
 	return HttpResponse(simplejson.dumps(data), mimetype="application/json")
 
 def series_form_html(request):

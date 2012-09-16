@@ -1,24 +1,27 @@
 <script type="text/javascript">
 var page_data = {{ page_data|safe }};
-page_data.csrf_token = "{{ csrf_token }}";
+page_data.csrfmiddlewaretoken = "{{ csrf_token }}";
 
 $(document).ready(function() {
 //------------------------------------------------------------------------------
 	$('#session-calendar').fullCalendar( $.extend({}, {{ fullcalendar_options|safe }} , {
 		select: function(start, end, allDay) {
-			$.event.trigger('eventAdd', [start, end, allDay])
+			$.event.trigger('timeslot-click', [start, end, allDay])
+			// $(window).trigger('timeslot-click', [start, end, allDay])
 			$('#session-calendar').fullCalendar('unselect');
 		},
 
 		eventClick: function(calEvent, jsEvent, view) {
-			$.event.trigger('eventEdit', [calEvent, true]);
+			$.event.trigger('event-click', [calEvent, true]);
 		},
 		eventDrop: function(event, dayDelta, minuteDelta, allDay, revertFunc) {
-			$.event.trigger('eventEdit', [event, false, revertFunc])
+			$.event.trigger('event-drop', [event, false, revertFunc])
 		}
-	})).bind('eventsUpdated', function(event, data) {
+	})).bind('postEvent-success', function(event, data) {
 		$('#session-calendar').fullCalendar('refetchEvents');
 	});
+
+	$('#event-data').django_datebook_connector(page_data);
 //------------------------------------------------------------------------------
 
 
@@ -115,92 +118,93 @@ $(document).ready(function() {
 
 	//-------------------------------------------------------------------------
 	// FORMS
-	$('#occurrence-detail').dialog({
-		autoOpen: false,
-		width: 450
-	});
+	// $('#occurrence-detail').dialog({
+	// 	autoOpen: false,
+	// 	width: 450
+	// });
 
-	$('#series-dialog').dialog({
-		autoOpen: false,
-		width: 450
-	});
+	// $('#series-dialog').dialog({
+	// 	autoOpen: false,
+	// 	width: 450
+	// });
 
-	$('#event-dialog').dialog({
-		autoOpen: false,
-		width: 650,
-		buttons: {
-			Save: function() {
-				postOccurrenceForm('eventsUpdated');
-				$( this ).dialog( "close" );
-			},
-			Delete: function() {
-				$( '#id_action').val('delete');
-				postOccurrenceForm('eventsUpdated');
-				$( this ).dialog( "close" );
-			},
-			Cancel: function() {
-				$( this ).dialog( "close" );
-			},
-			Series: function() {
-				data = { 'csrfmiddlewaretoken': page_data.csrf_token };
-				$.post(page_data.series_form_url, data, function(answer) {
-					if (answer.error) {
-						alert("Error: " + answer.error);
-					} else {
-						$( '#series-table' ).html(answer.as_table);
-						$( '#series-dialog' ).dialog('open').show();
-						$( this ).dialog( "close" );
-					}
+	// $('#event-dialog').dialog({
+	// 	autoOpen: false,
+	// 	width: 650,
+	// 	buttons: {
+	// 		Save: function() {
+	// 			postOccurrenceForm('eventsUpdated');
+	// 			$( this ).dialog( "close" );
+	// 		},
+	// 		Delete: function() {
+	// 			$( '#id_action').val('delete');
+	// 			postOccurrenceForm('eventsUpdated');
+	// 			$( this ).dialog( "close" );
+	// 		},
+	// 		Cancel: function() {
+	// 			$( this ).dialog( "close" );
+	// 		},
+	// 		Series: function() {
+	// 			data = { 'csrfmiddlewaretoken': page_data.csrf_token };
+	// 			$.post(page_data.series_form_url, data, function(answer) {
+	// 				if (answer.error) {
+	// 					alert("Error: " + answer.error);
+	// 				} else {
+	// 					$( '#series-table' ).html(answer.as_table);
+	// 					$( '#series-dialog' ).dialog('open').show();
+	// 					$( this ).dialog( "close" );
+	// 				}
 
-				});
-			}
-		},
+	// 			});
+	// 		}
+	// 	},
 
-	}).on('eventAdd', function(event, start, end, allDay) {
-		var data = { 
-			'csrfmiddlewaretoken': page_data.csrf_token,
-			'start': start.toISOString(),
-			'end': end.toISOString(),
-			'offset': start.getTimezoneOffset(),
-		 };
-		$.post(page_data.event_form_url, data, function(answer) {
-			if (answer.error) {
-				alert("Error: " + answer.error);
-			} else {
-				$( '.datepicker' ).datepicker();
-				$( '.timepicker' ).timepicker();
-				$( '#event-table' ).html(answer.as_table);
-				$( '#event-dialog' ).dialog('open').show();
-			}
+	// }).on('eventAdd', function(event, start, end, allDay) {
+	// 	var data = { 
+	// 		'csrfmiddlewaretoken': page_data.csrf_token,
+	// 		'start': start.toISOString(),
+	// 		'end': end.toISOString(),
+	// 		'offset': start.getTimezoneOffset(),
+	// 	 };
+	// 	$.post(page_data.event_form_url, data, function(answer) {
+	// 		if (answer.error) {
+	// 			alert("Error: " + answer.error);
+	// 		} else {
+	// 			$( '.datepicker' ).datepicker();
+	// 			$( '.timepicker' ).timepicker();
+	// 			$( '#event-table' ).html(answer.as_table);
+	// 			$( '#event-dialog' ).dialog('open').show();
+	// 		}
 
-		});
-	}).on('eventEdit', function(event, calEvent, showdialog, revertFunc) {
-		if (showdialog) {
-			var data = { 'csrfmiddlewaretoken': page_data.csrf_token, 'event_id': calEvent.event_id, };
-			$.post(page_data.event_form_url, data, function(answer) {
-				if (answer.error) {
-					alert("Error: " + answer.error);
-				} else {
-					$( '.datepicker' ).datepicker();
-					$( '.timepicker' ).timepicker();
-					$( '#event-table' ).html(answer.as_table);
-					$( '#event-dialog' ).dialog('open').show();
-				}
+	// 	});
+	// }).on('eventEdit', function(event, calEvent, showdialog, revertFunc) {
+	// 	if (showdialog) {
+	// 		var data = { 'csrfmiddlewaretoken': page_data.csrf_token, 'event_id': calEvent.event_id, };
+	// 		$.post(page_data.event_form_url, data, function(answer) {
+	// 			if (answer.error) {
+	// 				alert("Error: " + answer.error);
+	// 			} else {
+	// 				$( '.datepicker' ).datepicker();
+	// 				$( '.timepicker' ).timepicker();
+	// 				$( '#event-table' ).html(answer.as_table);
+	// 				$( '#event-dialog' ).dialog('open').show();
+	// 			}
 
-			});
+	// 		});
 
-		} else {
-			if (postOccurrenceForm('event_update/', '')) {
-				revertFunc();
-			}
-		}
-	});
+	// 	} else {
+	// 		if (postOccurrenceForm('event_update/', '')) {
+	// 			revertFunc();
+	// 		}
+	// 	}
+	// });
 
 
 });
 </script>
 
 <div id="session-calendar"></div>
+<div id="event-data"></div>
 
 <div id="occurrence-detail" title="Event details">
 	<table>

@@ -35,6 +35,7 @@ def configure_fullcalendar(datebook_id, editable):
 		'create_url': reverse("event_create"),
 		'update_url': reverse("event_update"),
 		'delete_url': reverse("event_delete"),
+		'event_data_url':	reverse("event_data"),
 		'event_form_url': 	reverse("event_form_html"),
 		'series_form_url': 	reverse("series_form_html"),
 		'datebook_id': datebook_id,
