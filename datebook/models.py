@@ -100,3 +100,8 @@ class Event(models.Model):
 
 	def __unicode__(self):
 		return "%s event for %s" % (self.start, self.datebook.title)
+
+
+class TestModel(models.Model):
+	start	= models.DateTimeField()
+	end		= models.DateTimeField()

@@ -6,7 +6,9 @@ from datetime import datetime, timedelta
 import dateutil.parser
 
 from datebook.models import Event, Datebook
-from datebook.forms import EventModelForm, SeriesModelForm
+from datebook.forms import EventModelForm, SeriesModelForm, TestForm
+
+from copy import deepcopy, copy
 
 import logging
 log = logging.getLogger('app')
@@ -53,16 +55,16 @@ def event_data(request):
 			event = Event.objects.get(id=event_id)
 			form = EventModelForm(instance=event)
 
-			if form.is_valid():		
-				data['model'] = {}
-				for field in event._meta.fields:
-					data['model'][field.name] = getattr(event, field.name)
+			# note to self: instance only sets the initial valued for the form
+			# the form is not bound to the Event object, so is_valid will return
+			# false with no errors. DOn't do that
+			data['model'] = {}
+			for field in event._meta.fields:
+				data['model'][field.name] = getattr(event, field.name)
 
-				data['form'] = {}
-				for field in form:
-					data['form'][field.name] = getattr(event, field.name)
-			else:
-				data = { 'error': 'Validation error', 'message': '\n'.join(["%s: %s" % (key, form.errors[key]) for key in form.errors])  }
+			data['form'] = {}
+			for field in form:
+				data['form'][field.name] = getattr(event, field.name)
 		except DoesNotExist:
 			data = { 'error': 'DoesNotExist', 'message': 'Event id=%s does not exist.' % (event_id,) }
 
@@ -70,29 +72,37 @@ def event_data(request):
 
 
 def event_form_html(request):
+	"""
+	returns the html for the EventModelForm
+	initial data can be passed via POST variables:
+		event_id: (integer) will find the event and load it as the form's instance
+		initial: (dictionary) directly loads as the form's initial
+		POST: IF POST.initial does not exist, will load request.POST as the form's initial
+	"""
 	data = {}
 	# start and end dates are passed as ISO-formatted strings in UTC.
 	# The offset in minutes is also passed. 
-	
 
-	event_id = request.POST['event_id'] if request.POST.has_key('event_id') else request.GET['event_id'] if request.GET.has_key('event_id') else None
+	# instance always takes precedence over instance when setting initial values
+	
+	# TODO, this is all fucked up.
+	event_id 	= request.POST['event_id'] if request.POST.has_key('event_id') else request.GET['event_id'] if request.GET.has_key('event_id') else None
+	init 		= request.POST.dict() if request.method == 'POST' else request.GET.dict() if request.method == 'GET' else {}
+
 	if event_id:
 		try:
 			event = Event.objects.get(id=event_id)
-			form = EventModelForm(instance=event)
-			if form.is_valid():
-				data = { 'as_table': form.as_table() }
-			else:
-				data = { 'error': 'Validity Errors: \n%s' % (str(form.errors),) }				
-		except:
-			data = { 'error': 'Could not get event id=%s' % (event_id,) }
+			form = EventModelForm(instance=event, initial=init)
+			data = { 'as_table': form.as_table() }
+		except DoesNotExist:
+			data = { 'error': 'DoesNotExist', 'message': 'Could not get event id=%s' % (event_id,) }
 	else:
-		start 	= dateutil.parser.parse(request.POST['start']) - timedelta(minutes=int(request.POST['offset'])) if request.POST.has_key('start') else datetime.now()
-		end 	= dateutil.parser.parse(request.POST['end']) - timedelta(minutes=int(request.POST['offset'])) if request.POST.has_key('end') else start + timedelta(minutes=1)
-		init = {
-			'start': start,
-			'end': end,
-		}
+		# TODO: put this part in the widget logic
+		start 	= dateutil.parser.parse(init['start']) if init.has_key('start') else datetime.now()
+		end 	= dateutil.parser.parse(init['end']) if init.has_key('end') else start + timedelta(minutes=1)
+		init['start'] = start
+		init['end'] = end
+
 		form = EventModelForm(initial=init)
 		data = { 'as_table': form.as_table() }
 	return HttpResponse(simplejson.dumps(data), mimetype="application/json")

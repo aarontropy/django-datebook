@@ -15,7 +15,7 @@ $(document).ready(function() {
 			$.event.trigger('event-click', [calEvent, true]);
 		},
 		eventDrop: function(event, dayDelta, minuteDelta, allDay, revertFunc) {
-			$.event.trigger('event-drop', [event, false, revertFunc])
+			$.event.trigger('event-drop', [event, revertFunc])
 		}
 	})).bind('postEvent-success', function(event, data) {
 		$('#session-calendar').fullCalendar('refetchEvents');

@@ -25,3 +25,21 @@ def datebook_view(request, datebook_id):
 		'datebook_id': datebook_id,
 	}
 	return render_to_response( template, data, context_instance = RequestContext(request))
+
+def test_view(request):
+	from datebook.forms import TestForm, TestModelForm
+	from datetime import datetime, timedelta
+	from dateutil import parser
+
+	# parser.parse(init['start']) - timedelta(minutes=int(init['offset'])) 
+	d = parser.parse(u"2012-09-11T04:00:00.000Z") - timedelta(minutes=u'240')
+	init = {'start': d, 'end': d}
+	form = TestForm(initial=init)
+	modelform = EventModelForm(initial=init)
+	template = 'datebook/test_template.html'
+	
+	data = {
+		'form': form,
+		'modelform': modelform,
+	}
+	return render_to_response( template, data, context_instance = RequestContext(request))

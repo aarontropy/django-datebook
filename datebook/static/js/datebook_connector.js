@@ -51,6 +51,7 @@
 
 				$(this).bind('timeslot-click', methods.showCreate );
 				$(this).bind('event-click', methods.showUpdate );
+				$(this).bind('event-drop', methods.updateEvent );
 
 				// dialog
 
@@ -92,10 +93,17 @@
 			alert('postDelete');
 		},
 		//----------------------------------------------------------------------
+		updateEvent: function(event, calEvent) {
+			// make sure there is an event_id in calEvent
+			if (calEvent.hasOwnProperty('event_id')) {
+				// get a form with all the right initial values in all the right places
+
+			}
+		},
+		//----------------------------------------------------------------------
 		showCreate: function(event, start, end, allDay) {
 			// update form html
 			var data = { 
-				'csrfmiddlewaretoken': $(this).data('options').csrfmiddlewaretoken,
 				'start': start.toISOString(),
 				'end': end.toISOString(),
 				'offset': start.getTimezoneOffset(),
@@ -103,39 +111,39 @@
 			};
 
 			var dlg = $(this).data('dialog');
-			$.post($(this).data("options").event_form_url, data, function(answer) {
-				if (answer.error) {
-					alert("Error: " + answer.error);
-				} else {
-					dlg.find("table").html(answer.as_table);
-					dlg.dialog('open').show();
-					// $( this ).dialog( "close" );
-				}
-
-			});
+			$(this).django_datebook_connector('getFormHTML',data);
+			dlg.dialog('open').show();
 
 		},
 		//----------------------------------------------------------------------
-		showUpdate: function(calEvent) {
-			// get event data
-			console.log(calEvent);
-			var data = {
-				'csrfmiddlewaretoken': $(this).data('options').csrfmiddlewaretoken,
-				'event_id': calEvent.event_id,
-			};
+		showUpdate: function(event, calEvent) {
 			// update form html
 			var dlg = $(this).data('dialog');
-			$.post($(this).data("options").event_form_url, data, function(answer) {
-				if (answer.error) {
-					alert("Error: " + answer.error);
-				} else {
-					dlg.find("table").html(answer.as_table);
-					dlg.dialog('open').show();
-				}
+			$(this).django_datebook_connector('getFormHTML',calEvent.event_id);
+			dlg.dialog('open').show();
 
+		},
+		getFormHTML: function(init, init2) {
+			var data = {'csrfmiddlewaretoken': $(this).data('options').csrfmiddlewaretoken};
+			var html = '';
+			if(init) {
+				if (typeof(init) === 'object') $.extend(data, init);
+				else if (typeof(init) === 'number') data['event_id'] = init;
+			}
+			if(init2) {
+				if (typeof(init2) === 'object') $.extend(data, init2);
+				else if (typeof(init2) === 'number') data['event_id'] = init2;
+			}
+			var url = $(this).data("options").event_form_url;
+			var dlg = $(this).data('dialog');
+			console.log(data);
+			$.post(url, data, function(answer) {
+				if (answer.error) {
+					alert(answer.error + "\n-----\n" + answer.message);
+				} else {
+					dlg.find("table").html( answer.as_table );
+				}
 			});
-			// initialize form data
-			// show popup
 		},
 		formToObject: function() {
 			data = {};

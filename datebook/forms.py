@@ -11,6 +11,9 @@ import dateutil.parser
 
 from datebook import models as datebook
 
+import logging
+log = logging.getLogger('app')
+
 DATE_FORMAT = '%A, %b %d, %Y'
 TIME_FORMAT = '%I:%M %p'
 
@@ -123,8 +126,8 @@ FIELD_NAME_MAPPING = {
 
 
 class EventModelForm(forms.ModelForm):
-	start 		= forms.CharField(widget=JqDateTimeWidget)
-	end 		= forms.CharField(widget=JqDateTimeWidget)
+	start 		= forms.DateTimeField(widget=JqDateTimeWidget)
+	end 		= forms.DateTimeField(widget=JqDateTimeWidget)
 	tz 			= forms.CharField(initial='America/Louisville')
 	title 		= forms.CharField(required=False)
 	location 	= forms.CharField(required=False)
@@ -155,3 +158,15 @@ class SeriesModelForm(forms.ModelForm):
 
 	class Meta:
 		model = datebook.Series
+
+class TestModelForm(forms.ModelForm):
+	start = forms.DateTimeField(widget=JqDateTimeWidget)
+	end = forms.DateTimeField(widget=JqDateTimeWidget)
+
+	class Meta:
+		model = datebook.TestModel
+
+class TestForm(forms.Form):
+	start = forms.DateTimeField(widget=JqDateTimeWidget)
+	end = forms.DateTimeField(widget=SplitDateTimeWidget)
+
