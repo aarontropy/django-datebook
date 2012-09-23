@@ -3,7 +3,8 @@ from django.utils import timezone
 from django.utils.formats import get_format
 from django.utils.safestring import mark_safe
 
-from django.forms.widgets import SplitDateTimeWidget
+from django.forms.widgets import SplitDateTimeWidget, HiddenInput
+from timezones.forms import TZDateTimeField
 
 
 from datetime import datetime
@@ -64,7 +65,7 @@ class JqDateTimeWidget(forms.widgets.MultiWidget):
 	def __init__(self, attrs=None):
 		widgets = [
 			DatePickerWidget(),
-			TimePickerWidget()
+			TimePickerWidget(),
 			# forms.widgets.TextInput({'class': 'datePicker', 'readonly':'true'}),
 			# forms.widgets.TextInput({'class': 'timePicker', 'readonly':'true'})
 		]
@@ -74,7 +75,7 @@ class JqDateTimeWidget(forms.widgets.MultiWidget):
 		""" You have to implement this method in order to subclass a MultiWidget.
 		Look at django.forms.widgets.SplitDateTimeWidget for another example."""
 		if value:
-			return [value.date(), value.time().replace(microsecond=0),]
+			return [value.date(), value.time().replace(microsecond=0)]
 		return [None, None]
 
 	def value_from_datadict(self, data, files, name):
@@ -84,7 +85,7 @@ class JqDateTimeWidget(forms.widgets.MultiWidget):
 			datetime_input_format = "%s %s" % (get_format('DATE_INPUT_FORMATS')[0], get_format('TIME_INPUT_FORMATS')[1])
 			datetime_string = "%s %s" % (date_value, time_value)
 			try:
-				return datetime.strptime(datetime_string, datetime_format) .replace(tzinfo=timezone.utc) #get_current_timezone())
+				return datetime.strptime(datetime_string, datetime_format)
 			except ValueError:
 				return None
 		return None
@@ -126,16 +127,13 @@ FIELD_NAME_MAPPING = {
 
 
 class EventModelForm(forms.ModelForm):
-	start 		= forms.DateTimeField(widget=JqDateTimeWidget)
-	end 		= forms.DateTimeField(widget=JqDateTimeWidget)
-	tz 			= forms.CharField(initial='America/Louisville')
+	start 		= TZDateTimeField(widget=JqDateTimeWidget) #forms.DateTimeField(widget=JqDateTimeWidget)
+	end 		= TZDateTimeField(widget=JqDateTimeWidget) #forms.DateTimeField(widget=JqDateTimeWidget)
 	title 		= forms.CharField(required=False)
 	location 	= forms.CharField(required=False)
 
 	datebook 	= forms.ModelChoiceField(widget=forms.HiddenInput, queryset=datebook.Datebook.objects.all())
-	event 		= forms.CharField(widget=forms.HiddenInput, required=False)
-
-	action 		= forms.CharField(initial='create', widget=forms.HiddenInput)
+	id 			= forms.IntegerField(widget = forms.HiddenInput, required=False)
 
 	
 	class Meta:

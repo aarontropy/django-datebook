@@ -2,6 +2,9 @@ from django.db import models
 from django.conf import settings
 from datebook.timezone_field import fields as timezone
 from datetime import time, timedelta
+from timezones.fields import TZDateTimeField
+
+import pytz
 
 
 
@@ -89,8 +92,8 @@ class Series(models.Model):
 
 class Event(models.Model):
 	title		= models.CharField(max_length=255, null=True)
-	start		= models.DateTimeField()
-	end			= models.DateTimeField()
+	start		= TZDateTimeField() # always timezone aware, always UTC
+	end			= TZDateTimeField() # always timezone aware, always UTC
 	allDay 		= models.BooleanField(default=False)
 	tz			= timezone.TimeZoneField(null=True)
 	location	= models.CharField(max_length=255, null=True)
@@ -98,10 +101,20 @@ class Event(models.Model):
 	datebook 	= models.ForeignKey(Datebook)
 	series		= models.ForeignKey(Series, null=True)
 
+	def save(self):
+		super(Event,self).save()
+
+	def totimezone(self, tz=None):
+		if not tz:
+			tz = self.tz if self.tz else pytz.timezone(settings.TIME_ZONE)
+		self.start 	= self.start.astimezone(tz)
+		self.end 	= self.end.astimezone(tz)
+		return self
+
 	def __unicode__(self):
 		return "%s event for %s" % (self.start, self.datebook.title)
 
 
 class TestModel(models.Model):
-	start	= models.DateTimeField()
-	end		= models.DateTimeField()
+	start = TZDateTimeField()
+	end = TZDateTimeField()

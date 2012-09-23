@@ -1,6 +1,9 @@
 import sys
+import pytz
 from django.http import HttpResponse
 from django.utils import simplejson
+from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 
 from datetime import datetime, timedelta
 import dateutil.parser
@@ -36,12 +39,11 @@ def datebook_events(request, datebook_id):
 		data.append({
 				'event_id': event.id,
 				'series_id': event.series,
-				'datebook_id': event.datebook.id,
 				'event_title': event.title,
 				'title': event.title,
 				'start': str(event.start.replace(tzinfo=event.tz)),
 				'end': str(event.end.replace(tzinfo=event.tz)),
-				'datebook': event.datebook.title,
+				'datebook': event.datebook.id,
 				'allDay': False
 			})
 	jsondata = simplejson.dumps(data)
@@ -65,7 +67,7 @@ def event_data(request):
 			data['form'] = {}
 			for field in form:
 				data['form'][field.name] = getattr(event, field.name)
-		except DoesNotExist:
+		except ObjectDoesNotExist:
 			data = { 'error': 'DoesNotExist', 'message': 'Event id=%s does not exist.' % (event_id,) }
 
 	return HttpResponse(simplejson.dumps(data), mimetype="application/json")
@@ -85,23 +87,29 @@ def event_form_html(request):
 
 	# instance always takes precedence over instance when setting initial values
 	
-	# TODO, this is all fucked up.
+	# TODO, CHANGE TIME_ZONE to current time zone (user specified?)
 	event_id 	= request.POST['event_id'] if request.POST.has_key('event_id') else request.GET['event_id'] if request.GET.has_key('event_id') else None
 	init 		= request.POST.dict() if request.method == 'POST' else request.GET.dict() if request.method == 'GET' else {}
-
+	# if we get a start and/or end time, it will be in local time
+	if init.has_key('start') and init.has_key('end'):
+		start = init['start']  
+		end = init['end']
+		start 	= dateutil.parser.parse(start[:start.find('(')] if '(' in start else start) if init.has_key('start') else datetime.now()
+		end 	= dateutil.parser.parse(end[:end.find('(')] if '(' in end else end) if init.has_key('end') else start + timedelta(minutes=1)
+		init['start'] = start
+		init['end'] = end
+	init['tz']  = init['tz'] if init.has_key('tz') else settings.TIME_ZONE
 	if event_id:
 		try:
-			event = Event.objects.get(id=event_id)
+			event = Event.objects.get(id=event_id).totimezone()
+			log.debug(request.POST)
 			form = EventModelForm(instance=event, initial=init)
 			data = { 'as_table': form.as_table() }
-		except DoesNotExist:
+		except ObjectDoesNotExist:
 			data = { 'error': 'DoesNotExist', 'message': 'Could not get event id=%s' % (event_id,) }
 	else:
 		# TODO: put this part in the widget logic
-		start 	= dateutil.parser.parse(init['start']) if init.has_key('start') else datetime.now()
-		end 	= dateutil.parser.parse(init['end']) if init.has_key('end') else start + timedelta(minutes=1)
-		init['start'] = start
-		init['end'] = end
+		# date from post is in local time, but likely tagged with UTC time zone.
 
 		form = EventModelForm(initial=init)
 		data = { 'as_table': form.as_table() }
@@ -148,16 +156,23 @@ def event_create(request):
 def event_update(request):
 	data = {}
 	if request.is_ajax() and request.method=='POST':
-		event = Event.objects.get(id=request.POST['event'])
-		form = EventModelForm(instance=event, data=request.POST)
-		data = save_form(form)
+		try:
+			event = Event.objects.get(id=request.POST['id'])
+			form = EventModelForm(instance=event, data=request.POST)
+			data = save_form(form)
+		except ObjectDoesNotExist:
+			data = { 'error': 'DoesNotExist', 'message': 'Could not get event id=%s' % (event_id,) }
+
 	return HttpResponse(simplejson.dumps(data), mimetype="application/json")
 
 def event_delete(request):
 	data = {}
 	if request.is_ajax() and request.method=='POST':
-		event = Event.objects.get(id=request.POST['event'])
-		event.delete()
+		try:
+			event = Event.objects.get(id=request.POST['id'])
+			event.delete()
+		except ObjectDoesNotExist:
+			data = { 'error': 'DoesNotExist', 'message': 'Could not get event id=%s' % (event_id,) }
 	return HttpResponse(simplejson.dumps(data), mimetype="application/json")
 
 #-------------------------------------------------------------------------------

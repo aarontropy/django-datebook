@@ -12,6 +12,10 @@ from django.db import models
 from timezones.forms import TZDateTimeField as TZFormField, parse_tzdt
 import pytz
 
+# added by ARJ according to http://south.aeracode.org/wiki/MyFieldsDontWork
+from south.modelsinspector import add_introspection_rules
+add_introspection_rules([], ["^timezones\.fields\.TZDateTimeField"])
+
 
 class TZDatetime(datetime):
     def aslocaltimezone(self):

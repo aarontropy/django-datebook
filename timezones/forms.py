@@ -6,7 +6,10 @@ from datetime import date, datetime, timedelta, tzinfo
 from django import forms
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.forms.fields import EMPTY_VALUES, DEFAULT_DATETIME_INPUT_FORMATS
+# from django.forms.fields import EMPTY_VALUES, DEFAULT_DATETIME_INPUT_FORMATS
+from django.core.validators import EMPTY_VALUES
+from django.contrib.localflavor.generic.forms import DEFAULT_DATETIME_INPUT_FORMATS
+
 from django.utils.translation import ugettext_lazy as _
 import pytz
 import re
